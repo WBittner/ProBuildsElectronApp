@@ -1,5 +1,5 @@
 {
-  "name": "probuildselectronapp",
+  "name": "leaguebuildlookupelectronapp",
   "version": "0.1.0",
   "description": "",
   "main": "main.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://WBittner@github.com/WBittner/ProBuildsElectronApp.git"
+    "url": "git+https://WBittner@github.com/WBittner/LeagueBuildLookupElectronApp.git"
   },
   "author": "William Bittner",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/WBittner/ProBuildsElectronApp/issues"
+    "url": "https://github.com/WBittner/LeagueBuildLookupElectronApp/issues"
   },
-  "homepage": "https://github.com/WBittner/ProBuildsElectronApp#readme",
+  "homepage": "https://github.com/WBittner/LeagueBuildLookupElectronApp#readme",
   "dependencies": {
     "electron-config": "^0.2.1",
     "request": "^2.79.0",
