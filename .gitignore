@@ -1,0 +1,2 @@
+#node modules dir doesn't need to go up
+node_modules

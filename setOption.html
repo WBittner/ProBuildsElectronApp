@@ -1,0 +1,20 @@
+<html>
+<title></title>
+<body style="text-align:center">
+    <input id="input" autofocus />
+    <br><br>
+    <button id="accept">Accept</button>
+    <button id="cancel">Cancel</button>
+
+    <script> 
+        document.getElementById('input').value = require('electron').remote.getCurrentWindow().inputText || "";
+        document.getElementById('accept').addEventListener('click', function() {
+            require('electron').ipcRenderer.send(require('electron').remote.getCurrentWindow().event, document.getElementById('input').value);
+            window.close();
+        });
+        document.getElementById("cancel").addEventListener("click", function() {
+            window.close();
+        });
+    </script>
+</body>
+</html>
