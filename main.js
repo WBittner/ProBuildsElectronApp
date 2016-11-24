@@ -1,19 +1,21 @@
 const {app, BrowserWindow, globalShortcut, Menu, ipcMain} = require('electron')
 const path = require('path')
 const url = require('url')
+const Promise = require("bluebird");
 
 const rp = require('request-promise');
-const {getCurrentChampionBySummonerId, getSummonerIdBySummonerName} = require('./leagueUtils.js');
-const {setSummonerName, getSummonerId, setSummonerId, clearConfig, isSummonerSet, setApiKey, getApiKey} = require("./configUtils.js");
+const {getCurrentChampionBySummonerId, getSummonerIdBySummonerName, getChampionNameByChampionId} = require('./leagueUtils.js');
+const {setSummonerName, getSummonerId, setSummonerId, clearConfig, isSummonerSet, setApiKey, getApiKey, isKeySet} = require("./configUtils.js");
+const {createMainMenu, getPromptWindow, loadPromptHtml} = require("./options.js");
 
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win
 
-function createWindow () {
+function createWindow () {// TODO: make a taskbar, rather than disabling window myself and stuff?
 
-  const menu = Menu.buildFromTemplate(getMenu());
+  const menu = Menu.buildFromTemplate(createMainMenu());
   Menu.setApplicationMenu(menu);
 
   // Create the browser window.
@@ -24,20 +26,8 @@ function createWindow () {
     darkTheme: true
   });
 
-  const ret = globalShortcut.register('Ctrl+Alt+P', function(){ //TODO: make shortcut conf'able
-    if(isSummonerSet()) {//TODO: catch if key not set, separate load page
-      getCurrentChampionBySummonerId(getSummonerId())
-        .then(function(championId) { // TODO: move to fn?
-          // TODO: move to champion.gg ;) (additional get call to get champ name - use "key" field)
-          win.loadURL("http://www.probuilds.net/champions/details/" + championId);
-          win.show();
-        })
-        .error(console.log); // TODO: page for summoner not in game
-    } else {
-      win.loadURL(path.join(__dirname, 'index.html')); // TODO: fix this page's text
-      win.show();
-    }
-  });
+  const ret = globalShortcut.register('Ctrl+Alt+P', onShortcutActivated); //TODO: make shortcut conf'able
+  
 
   // Emitted when the window is closed.
   win.on('closed', () => {
@@ -48,104 +38,51 @@ function createWindow () {
   })
 }
 
-//TODO: move and rename
-/**
- * callback for option menu button clicked
- */
-function onEditSummonerNameOption(menuItem, browserWindow, event) {
-  console.log("in onEditSummonerName");
-  var promptWindow = new BrowserWindow({
-    parent: browserWindow,
-    width: 250,
-    height: 125,
-    resizable: false,
-    moveable: true,
-    alwaysOnTop: true,
-    autoHideMenuBar: true,
-    title: "Edit Summoner Name",
-    minimizable: false    
-  });
+process.on("unhandledRejection", function(reason, promise) {
+    //don't log, don't error. I know what I'm doing... probably
+});
 
-  promptWindow.inputText = "fakerrrr";
-  promptWindow.event = "editSummonerName";
-  promptWindow.loadURL(path.join(__dirname, 'setOption.html'));
-}
-
-//TODO: move and rename
-/**
- * callback for option menu button clicked
- */
-function onEditApiKeyOption(menuItem, browserWindow, event) {
-  console.log("in onEditApiKeyOption");
-  var promptWindow = new BrowserWindow({
-    parent: browserWindow,
-    width: 250,
-    height: 125,
-    resizable: false,
-    moveable: true,
-    alwaysOnTop: true,
-    autoHideMenuBar: true,
-    title: "Edit Api Key",
-    minimizable: false
-  });
-
-  promptWindow.event = "editApiKey";
-  promptWindow.loadURL(path.join(__dirname, 'setOption.html'));
-}
-
-
-//TODO move and rename
-/**
- * callback for actually setting summoner name
- */
-function editSummonerName(summonerName) {
-    setSummonerName(summonerName);
-}
-
-function getMenu() {
-  return template = [
-    {
-      label: 'Options',
-      submenu: [
-        {
-          label: 'Edit Summoner Name',
-          click: onEditSummonerNameOption
-        },
-        {
-          label: 'Edit Api Key',
-          click: onEditApiKeyOption
-        },
-        {
-          label: 'Clear Config',
-          click: clearConfig
+function onShortcutActivated() {
+  if(isSummonerSet() && isKeySet()) {//TODO: catch if key not set, separate load page
+    getCurrentChampionBySummonerId(getSummonerId())
+      .catch(function(error) {
+        error = { error: error, caught : true};
+        console.log("Summoner not in game");
+        win.loadURL(path.join(__dirname, 'index.html')); // TODO: page for summoner not in game
+        win.show();
+        throw error;
+      })
+      .then(getChampionNameByChampionId)
+      .catch(function(error) {
+        if(!error.caught) { //TODO: there's gotta be a better way...
+          error = { error: error, caught : true};
+          console.log("champid not valid?");
+          win.loadURL(path.join(__dirname, 'index.html')); // TODO: wat do here..
+          win.show();
         }
-      ]
-    }
-  ]
+        throw error; 
+      }) 
+      .then(function(championKey) { // TODO: move to fn?
+        win.loadURL("http://www.champion.gg/champion/" + championKey);
+        win.show();
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  } else {
+    win.loadURL(path.join(__dirname, 'index.html')); // TODO: fix this page's text
+    win.show();
+  }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
-
-// Quit when all windows are closed.
-app.on('window-all-closed', () => {
-  // On macOS it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q
-  if (process.platform !== 'darwin') {
-    app.quit()
-  }
-})
+app.on('ready', createWindow);
 
 ipcMain.on('editSummonerName', function(event, summonerName) {
-  console.log("in editSumICP, name: " + summonerName)
   setSummonerName(summonerName);
   getSummonerIdBySummonerName(summonerName).then(setSummonerId);
 });
 
 ipcMain.on('editApiKey', function(event, apiKey) {
-  console.log("in editApiKey, key: " + apiKey)
   setApiKey(apiKey);
 });
 
